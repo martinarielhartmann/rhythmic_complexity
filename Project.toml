@@ -1,6 +1,26 @@
 name = "rhythmic_complexity"
-[compat]
-julia = "1.12.4"
-DrWatson = "2.19.1"
+
 [deps]
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+ContinuousWavelets = "96eb917e-2868-4417-9cb6-27e7ff17528f"
+DSP = "717857b8-e6f2-59f4-9121-6e50c889abd2"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 DrWatson = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
+FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
+FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
+GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
+HypothesisTests = "09f84164-cd44-5f33-b23f-e6b0d136a0d5"
+LibSndFile = "b13ce0c6-77b0-50c6-a2db-140568b8d1a5"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+MATLAB = "10e44e05-a98a-55b3-a45b-ba969058deb6"
+MP3 = "84e92333-4865-4a61-b1f2-d6ec26b83890"
+Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
+PortAudio = "80ea8bcb-4634-5cb3-8ee8-a132660d1d2d"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+Wavelets = "29a6e085-ba6d-5f35-a997-948ac2efa89a"
+XLSX = "fdbf4ff8-1666-58a4-91e7-1b58723a45e0"
+
+[compat]
+DrWatson = "2.19.1"
+julia = "1.12.4"
