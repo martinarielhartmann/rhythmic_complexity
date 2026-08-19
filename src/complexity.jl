@@ -1,12 +1,13 @@
 module Complexity
-using FileIO, LibSndFile, LinearAlgebra, Statistics,Makie,GLMakie,DSP,FFTW,PortAudio,MP3, DrWatson,MATLAB
+using LinearAlgebra, Statistics,Makie,GLMakie,DSP,FFTW,PortAudio, DrWatson,MATLAB
+include(srcdir("utils.jl"))
 # add https://github.com/JuliaAudio/MP3.jl
 struct Data
     fname
     val
 end
 function main(foldername;trim=false,example=nothing,overwrite=false,method="spectrum")
-    fullfnames = recursive_list_all_files_in_tree(foldername)
+    fullfnames = Utils.recursive_list_all_files_in_tree(foldername)
     if example != nothing
         fullfnames = fullfnames[last.(split.(fullfnames,"/")) .== example]
     end
@@ -21,10 +22,8 @@ function main(foldername;trim=false,example=nothing,overwrite=false,method="spec
         elseif method == "autocor"
             g = getcomplexity_autocor.(fullfnames;trim=trim)
         else
-
             g = getcomplexity.(fullfnames;trim=trim)
         end
-        t = Tuple(fullfnames .=> g)
         d = Data(fullfnames,g)
         wsave(outfile, Dict(:data => d))
     else
@@ -51,60 +50,19 @@ function main(foldername;trim=false,example=nothing,overwrite=false,method="spec
     ax = Axis(f[1, 1], yticks=(1:length(g),chop.(fnames[sortperm(g,rev=true)];tail=4)),xlabel="Rhythmic Complexity")
     barplot!(ax,sort(g,rev=true);direction=:x)
     sortedfullnames = fullfnames[sortperm(g,rev=true)]
-    click_and_play(f,ax,sortedfullnames;trim=trim)
+    Utils.click_and_play(f,ax,sortedfullnames;trim=trim)
     display(f)
     if example == nothing
         save(plotsdir(last(split(outfile,"/"))[1:end-4] * "png"),f)
     end
 
 end
-function recursive_list_all_files_in_tree(foldername)
-    files = [
-            joinpath(dir, file)
-            for (dir, _, filenames) in walkdir(foldername)
-            for file in filenames
-    ]
-end
-function click_and_play(fig,ax,files;trim=false)
-    """
-    left click on the bar: play audio
-    right click on the bar: stop audio
-    """
-    stream = nothing
-    on(events(fig.scene).mousebutton) do event
-        if event.button == Mouse.right && event.action == Mouse.press
-            println("stop playback")
-            stream !== nothing && close(stream)
-            stream = nothing
-            return
-        end
-
-        event.action == Mouse.press || return
-        event.button == Mouse.left || return
-
-
-        pos = mouseposition(fig.scene)
-        hit = Makie.pick(fig.scene, pos)
-
-        hit === nothing && return
-
-        plot, idx = hit
-
-        baridx = div(idx - 1, 4) + 1
-
-        if baridx in eachindex(files)
-            println("playing ", files[baridx])
-            stream = play_audio(files[baridx];trim=trim)
-        end
-        return
-    end
-end
 function getcomplexity(fname;trim=trim)
     x = load(fname)
     sr = x.samplerate
-    m = meanchannels(x)
+    m = Utils.meanchannels(x)
     if trim == true
-        m = trimfirst5sec(m,sr)
+        m = Utils.trimfirst5sec(m,sr)
     end
     s,fs=getmelstft(m,sr)
     f = []
@@ -119,15 +77,15 @@ end
 function getcomplexity_autocor(fname;trim=trim)
     x = load(fname)
     sr = x.samplerate
-    m = meanchannels(x)
+    m = Utils.meanchannels(x)
     if trim == true
-        m = trimfirst5sec(m,sr)
+        m = Utils.trimfirst5sec(m,sr)
     end
     s,fs=getmelstft(m,sr)
     f = []
     for k = 1:size(s,2)
         s₁ = s[:,k]
-        s₁ .-= mean(s₁) # not a big impact. Important is not to divide by std; louder channels are more relevant
+        s₁ .-= mean(s₁) # not a big impact. Important is not to divide by std; louder channels are more relevant; classical music sems to go up if we don't demean?
         au = xcorr(s₁,s₁,)
         au = au[div(length(au),2)+1:end]
         push!(f,au)
@@ -214,8 +172,6 @@ function getmelstft(m, sr;
 
     return mel_db', fs
 end
-meanchannels(x) = collect(vec(mean(Float64.(x),dims=2)))
-trimfirst5sec(x, sr) = x[1:min(length(x), 5Int(sr))]
 function complexity(x)
     ndim = size(x,2)
     x .-= mean(x,dims=1)
@@ -224,20 +180,5 @@ function complexity(x)
     p = max.(p,eps())
     H = -sum(p.*log.(p))
     c = exp(H) / ndim # relative to number of channels (which depends on duration)
-end
-function play_audio(fname;trim=false)
-    f = FileIO.load(fname)
-    data = f.data
-    fs = f.samplerate
-    if trim
-        data = trimfirst5sec(data,fs)
-    end
-    stream = PortAudioStream(0, 2; samplerate=fs)
-
-    @async begin
-        write(stream, data)
-    end
-
-    return stream
 end
 end

@@ -1,7 +1,7 @@
 module Spotifeatures
-using FileIO, DrWatson,XLSX,DataFrames,Heatmaps,Statistics,HypothesisTests,GLMakie
-include(srcdir("src.jl"))
+using FileIO, DrWatson,XLSX,DataFrames,Heatmaps,Statistics,HypothesisTests,GLMakie,CSV
 include(srcdir("mirtool.jl"))
+include(srcdir("utils.jl"))
 function artist_genres_boxplots(foldername;trim=false,method="spectrum")
     dfs = DataFrame(XLSX.readtable(datadir("exp_raw","Spotify_features.xlsx"),"Sheet1",infer_eltypes=true))
     dfs = dfs[:,[:trackID,:artist_genres]]
@@ -23,22 +23,19 @@ function artist_genres_boxplots(foldername;trim=false,method="spectrum")
     ax = Axis(f[1, 1], yticks=(1:length(topgenres),topgenres))
     boxplot!(ax,l,s.rhycomplexity;orientation = :horizontal)
     display(f)
-    fn = Mirtool.filesfromfullfilenames(foldername) * "artist_genre" * "_trim_" * string(trim) * "_method_" * method * ".png"
+    fn = basename(foldername) * "artist_genre" * "_trim_" * string(trim) * "_method_" * method * ".png"
     save(plotsdir(fn),f)
 end
-function artist_genres_scatter(featname,foldername;trim=false,method="spectrum")
-rhycomplbl = "Rhythm Complexity"
-f,ax,df = Mirtool.makescatter_mirfeature(featname,foldername;trim=false,method=method)
-dfs = DataFrame(XLSX.readtable(datadir("exp_raw","Spotify_features.xlsx"),"Sheet1",infer_eltypes=true))
-    dfs = dfs[:,[:trackID,:artist_genres]]
-    dfs = dfs[dfs.artist_genres .!= "[]",:]
+function artist_genres_scatter(featname,foldername::String;trim=false,method="spectrum")
+    GLMakie.activate!()
+    rhycomplbl = "Rhythm Complexity"
+    f,ax,df = Mirtool.makescatter_mirfeature(featname,foldername;trim=trim,method=method)
+    dfs = get_df_spotify(foldername)
     dfr,_ = get_rhycomp(foldername,trim,method)
     j = innerjoin(dfs,dfr,on=:trackID)
-    df.fname = removextension.(Mirtool.filesfromfullfilenames(df.fname))
+    df.fname = Utils.removextension.(basename.(df.fname))
     rename!(j,:trackID => :fname)
     df = innerjoin(j,df[:,[featname,"fname"]],on=:fname)
-
-
     df.artist_genres = map(df.artist_genres) do x
         x = strip(x,['[',']'])
         x = replace.(x,"'"=>"")
@@ -64,12 +61,67 @@ dfs = DataFrame(XLSX.readtable(datadir("exp_raw","Spotify_features.xlsx"),"Sheet
     display(f)
 
 end
+function get_df_spotify(foldername)
+    dfs = CSV.read(datadir("exp_raw",foldername * "_spotify_features.csv"),DataFrame)
+    dfs = dfs[:,[:trackID,:artist_genres]]
+    dfs = dfs[dfs.artist_genres .!= "[]",:]
+    if contains(dfs.trackID[1],".flac")
+        dfs.trackID = Utils.removextension.(dfs.trackID)
+    end
+    return dfs
+end
+function artist_genres_scatter(featname,foldername::Vector{String};trim=false,method="spectrum")
+    GLMakie.activate!()
+    rhycomplbl = "Rhythm Complexity"
+    f,ax,df = Mirtool.makescatter_mirfeature(featname,basename.(foldername);trim=trim,method=method)
+    #dfs = DataFrame(XLSX.readtable(datadir("exp_raw","spotify_previews_spotify_features.xlsx"),"Sheet1",infer_eltypes=true))
+    dfs = get_df_spotify.(foldername)
+    dfr = Vector{DataFrames.DataFrame}(undef,length(foldername))
+    for k = 1:length(foldername)
+        dfr[k],_ = get_rhycomp(foldername[k],trim,method)
+    end
+    j = innerjoin(vcat(dfs...),vcat(dfr...),on=:trackID)
+    df.fname = Utils.removextension.(basename.(df.fname))
+    rename!(j,:trackID => :fname)
+    df = innerjoin(j,df[:,[featname,"fname"]],on=:fname)
+    df.artist_genres = map(df.artist_genres) do x
+        x = strip(x,['[',']'])
+        x = replace.(x,"'"=>"")
+        x = split.(x,", ")
+    end
+    rename!(df,"rhycomplexity" => rhycomplbl)
+    dff = flatten(df,:artist_genres)
+    g = groupby(dff,:artist_genres)
+    c = combine(g, rhycomplbl => mean, rhycomplbl => std, featname => mean, featname => std, :artist_genres => length)
+    c.artist_genres = String.(c.artist_genres)
+    c = c[vec(any(Matrix(.!isnan.(c[:,contains.(names(c),"_std")])),dims=2)),:]
+    N= size(c,1)
+    magnify = 5
+    counts = c.artist_genres_length
+    sortedcounts = sort(counts)
+    c = c[sortperm(counts),:]
+    x = c[:,featname * "_mean"]
+    y = c[:,rhycomplbl * "_mean"]
+    resize!(f.scene, .8*2000, .8*1000)
+    textlabel!(ax,x,y,c.artist_genres)
+    #scatter!(ax,x,y,markersize=(magnify * (sortedcounts)),color=1:N,colormap=(:coolwarm,.2))
+    scatter!(ax,x,y,markersize=(.002 * (sortedcounts)),color=1:N,colormap=(:coolwarm,.2),markerspace=:data)
+    Mirtool.scatter_mirfeature_existing_figure(f, ax, df, featname,foldername;trim=trim,method=method)
+    df = Mirtool.getjointdf(foldername;trim=trim,method=method)
+    Utils.click_and_play(f,ax,df.fname;trim=trim)
+    xlims!(ax, 0, 1)
+    ylims!(ax, 0, .5)
+    @show c
+    display(f)
+
+end
 function get_rhycomp(foldername,trim,method)
+    # works for spotify_previews; with tracks one needs to tweak because the filenames are not the spotify trackID
     fn = datadir("exp_pro", split(foldername, "/")[end] * "_trim_" * string(trim) * "_method_" * method * ".jld2")
     d = load(fn)
     g = d["data"].val
-    names = Mirtool.filesfromfullfilenames(d["data"].fname)
-    names = [x[1:end-4] for x in names]
+    names = basename.(d["data"].fname)
+    names = Utils.removextension.(names)
     dfr = DataFrame(trackID = names, rhycomplexity = d["data"].val)
     return dfr,names
 end
@@ -103,5 +155,4 @@ function compare_with_spotify(foldername;trim=false)
 
 
 end
-removextension(x) = x[1:end-4]
 end
