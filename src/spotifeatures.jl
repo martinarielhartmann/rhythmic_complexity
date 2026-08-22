@@ -2,6 +2,7 @@ module Spotifeatures
 using FileIO, DrWatson,XLSX,DataFrames,Heatmaps,Statistics,HypothesisTests,GLMakie,CSV
 include(srcdir("mirtool.jl"))
 include(srcdir("utils.jl"))
+include(srcdir("applefeatures.jl"))
 function artist_genres_boxplots(foldername;trim=false,method="spectrum")
     dfs = DataFrame(XLSX.readtable(datadir("exp_raw","Spotify_features.xlsx"),"Sheet1",infer_eltypes=true))
     dfs = dfs[:,[:trackID,:artist_genres]]
@@ -27,25 +28,43 @@ function artist_genres_boxplots(foldername;trim=false,method="spectrum")
     save(plotsdir(fn),f)
 end
 function artist_genres_scatter(featname,foldername::String;trim=false,method="spectrum")
+    friendsflag = last(splitpath(foldername)) == "friends"
     GLMakie.activate!()
     rhycomplbl = "Rhythm Complexity"
     f,ax,df = Mirtool.makescatter_mirfeature(featname,foldername;trim=trim,method=method)
-    dfs = get_df_spotify(foldername)
+    if friendsflag
+        dfs = Applefeatures.get_df_apple(foldername)
+    else
+        dfs = get_df_spotify(foldername)
+    end
     dfr,_ = get_rhycomp(foldername,trim,method)
+    if friendsflag
+        dfr.trackID = map(x->x[4:end],dfr.trackID)
+    end
     j = innerjoin(dfs,dfr,on=:trackID)
     df.fname = Utils.removextension.(basename.(df.fname))
+    if friendsflag
+     df.fname = map(x->x[4:end],df.fname)
+    end
     rename!(j,:trackID => :fname)
     df = innerjoin(j,df[:,[featname,"fname"]],on=:fname)
-    df.artist_genres = map(df.artist_genres) do x
-        x = strip(x,['[',']'])
-        x = replace.(x,"'"=>"")
-        x = split.(x,", ")
+    if friendsflag == false
+        df.artist_genres = map(df.artist_genres) do x
+            x = strip(x,['[',']'])
+            x = replace.(x,"'"=>"")
+            x = split.(x,", ")
+        end
     end
     rename!(df,"rhycomplexity" => rhycomplbl)
-    dff = flatten(df,:artist_genres)
-    g = groupby(dff,:artist_genres)
+    if friendsflag == false
+        df = flatten(df,:artist_genres)
+    end
+    df = unique(df)
+    g = groupby(df,:artist_genres)
     c = combine(g, rhycomplbl => mean, rhycomplbl => std, featname => mean, featname => std, :artist_genres => length)
-    c.artist_genres = String.(c.artist_genres)
+    if friendsflag == false
+        c.artist_genres = String.(c.artist_genres)
+    end
     c = c[vec(any(Matrix(.!isnan.(c[:,contains.(names(c),"_std")])),dims=2)),:]
     N= size(c,1)
     magnify = 10
@@ -56,10 +75,8 @@ function artist_genres_scatter(featname,foldername::String;trim=false,method="sp
     y = c[:,rhycomplbl * "_mean"]
     resize!(f.scene, 2000, 2000)
     scatter!(ax,x,y,markersize=(magnify * (sortedcounts)),color=1:N,colormap=(:coolwarm,.2))
-    textlabel!(ax,x,y,c.artist_genres)
+    textlabel!(ax,x,y,string.(c.artist_genres))
     @show c
-    display(f)
-
 end
 function get_df_spotify(foldername)
     dfs = CSV.read(datadir("exp_raw",foldername * "_spotify_features.csv"),DataFrame)
@@ -71,18 +88,44 @@ function get_df_spotify(foldername)
     return dfs
 end
 function artist_genres_scatter(featname,foldername::Vector{String};trim=false,method="spectrum")
+    friendsflag = any(last.(splitpath.(foldername)) .== "friends")
+    if friendsflag
+        friendsind = findfirst(last.(splitpath.(foldername)) .== "friends")
+    end
     GLMakie.activate!()
     rhycomplbl = "Rhythm Complexity"
     f,ax,df = Mirtool.makescatter_mirfeature(featname,basename.(foldername);trim=trim,method=method)
+    folnames = basename.(foldername)
     #dfs = DataFrame(XLSX.readtable(datadir("exp_raw","spotify_previews_spotify_features.xlsx"),"Sheet1",infer_eltypes=true))
-    dfs = get_df_spotify.(foldername)
+    dfs = Vector{DataFrame}(undef,length(folnames))
+    for k in eachindex(folnames)
+        if folnames[k] == "friends"
+            dfs[k] = Applefeatures.get_df_apple(folnames[k])
+            dfs[k].artist_genres = lowercase.(coalesce.(dfs[k].artist_genres, ""))
+            dfs[k].artist_genres = ["['$(x)']" for x in dfs[k].artist_genres]
+        else
+            dfs[k] = get_df_spotify(folnames[k])
+        end
+    end
     dfr = Vector{DataFrames.DataFrame}(undef,length(foldername))
     for k = 1:length(foldername)
         dfr[k],_ = get_rhycomp(foldername[k],trim,method)
     end
+    if friendsflag
+        dfr[friendsind].trackID = map(x->x[4:end],dfr[friendsind].trackID)
+    end
     j = innerjoin(vcat(dfs...),vcat(dfr...),on=:trackID)
     df.fname = Utils.removextension.(basename.(df.fname))
+    if friendsflag
+        for k in eachindex(df.fname)
+            sv = df.fname[k][nextind(df.fname[k], 0, 4):end]
+            if in(sv, dfr[friendsind].trackID)
+                df.fname[k] = sv
+            end
+        end
+    end
     rename!(j,:trackID => :fname)
+
     df = innerjoin(j,df[:,[featname,"fname"]],on=:fname)
     df.artist_genres = map(df.artist_genres) do x
         x = strip(x,['[',']'])
@@ -96,7 +139,7 @@ function artist_genres_scatter(featname,foldername::Vector{String};trim=false,me
     c.artist_genres = String.(c.artist_genres)
     c = c[vec(any(Matrix(.!isnan.(c[:,contains.(names(c),"_std")])),dims=2)),:]
     N= size(c,1)
-    magnify = 5
+    magnify = .001
     counts = c.artist_genres_length
     sortedcounts = sort(counts)
     c = c[sortperm(counts),:]
@@ -104,8 +147,7 @@ function artist_genres_scatter(featname,foldername::Vector{String};trim=false,me
     y = c[:,rhycomplbl * "_mean"]
     resize!(f.scene, .8*2000, .8*1000)
     textlabel!(ax,x,y,c.artist_genres)
-    #scatter!(ax,x,y,markersize=(magnify * (sortedcounts)),color=1:N,colormap=(:coolwarm,.2))
-    scatter!(ax,x,y,markersize=(.002 * (sortedcounts)),color=1:N,colormap=(:coolwarm,.2),markerspace=:data)
+    scatter!(ax,x,y,markersize=(magnify * (sortedcounts)),color=1:N,colormap=(:coolwarm,.2),markerspace=:data)
     Mirtool.scatter_mirfeature_existing_figure(f, ax, df, featname,foldername;trim=trim,method=method)
     df = Mirtool.getjointdf(foldername;trim=trim,method=method)
     Utils.click_and_play(f,ax,df.fname;trim=trim)
@@ -113,7 +155,6 @@ function artist_genres_scatter(featname,foldername::Vector{String};trim=false,me
     ylims!(ax, 0, .5)
     @show c
     display(f)
-
 end
 function get_rhycomp(foldername,trim,method)
     # works for spotify_previews; with tracks one needs to tweak because the filenames are not the spotify trackID
