@@ -6,19 +6,24 @@ function recursive_list_all_files_in_tree(foldername)
             for file in filenames ]
 end
 removextension(x) = split(x, r"\.[^.]+$")[1]
-function click_and_play(fig,ax,files;trim=false)
+function click_and_play(fig, ax, files; trim=false)
     """
     left click on the bar: play audio
     right click on the bar: stop audio
     for scatter plots, files should be indexed based on the sorting, in decreasing order, of the values in the y axis
     """
     stream = nothing
+
     if any(p isa Makie.Scatter for p in ax.scene.plots)
         type = "Scatter"
     elseif any(p isa Makie.BarPlot for p in ax.scene.plots)
         type = "BarPlot"
+    else
+        error("No Scatter or BarPlot found in ax")
     end
+
     on(events(fig.scene).mousebutton) do event
+        # Right click: stop playback
         if event.button == Mouse.right && event.action == Mouse.press
             println("stop playback")
             stream !== nothing && close(stream)
@@ -26,25 +31,33 @@ function click_and_play(fig,ax,files;trim=false)
             return
         end
 
+        # Only handle left-button presses
         event.action == Mouse.press || return
         event.button == Mouse.left || return
-
 
         pos = mouseposition(fig.scene)
         hit = Makie.pick(fig.scene, pos)
 
+        # Nothing was picked
         hit === nothing && return
+
         plot, idx = hit
 
+        # Ignore clicks on the background or any other plot.
         if type == "Scatter"
+            plot isa Makie.Scatter || return
             baridx = idx
         elseif type == "BarPlot"
+            plot isa Makie.BarPlot || return
             baridx = div(idx - 1, 4) + 1
         end
+
+        # Only play if the index corresponds to a file
         if baridx in eachindex(files)
             println("playing ", files[baridx])
-            stream = Utils.play_audio(files[baridx];trim=trim)
+            stream = Utils.play_audio(files[baridx]; trim=trim)
         end
+
         return
     end
 end
