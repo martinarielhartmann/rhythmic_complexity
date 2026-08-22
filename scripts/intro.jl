@@ -5,6 +5,7 @@ using DrWatson
 include(srcdir("complexity.jl"))
 include(srcdir("mirtool.jl"))
 include(srcdir("spotifeatures.jl"))
+include(srcdir("applefeatures.jl"))
 println(
 """
 Currently active project is: $(projectname())
@@ -25,7 +26,7 @@ Path of active project: $(projectdir())
 
 #Complexity.main(datadir("exp_raw","trol");trim=true,method="spectrum")
 #Complexity.main(datadir("exp_raw","trol");trim=false,method="spectrum")
-Mirtool.extract_MIR_features(datadir("exp_raw","trol");trim=true)
+#Mirtool.extract_MIR_features(datadir("exp_raw","trol");trim=true)
 
 #Complexity.main(datadir("exp_raw","friends");trim=true,method="spectrum")
 #Mirtool.extract_MIR_features(datadir("exp_raw","friends");trim=false)
@@ -56,5 +57,5 @@ Mirtool.extract_MIR_features(datadir("exp_raw","trol");trim=true)
 #Complexity.main.(datadir.("exp_raw",["friends","spotify_previews","tracks"]);trim=true,overwrite=true)
 #Complexity.main.(datadir("exp_raw","tracks");trim=true,overwrite=true)
 #Mirtool.scatter_multidataset("Pulse Clarity",["spotify_previews","friends","tracks"];trim=true,method="spectrum")
-#Spotifeatures.artist_genres_scatter("Pulse Clarity",datadir.("exp_raw",["spotify_previews","tracks"]);trim=false,method="spectrum")
-#Spotifeatures.artist_genres_scatter("Pulse Clarity",datadir.("exp_raw",["spotify_previews","tracks"]);trim=false,method="spectrum")
+Spotifeatures.artist_genres_scatter("Pulse Clarity",datadir.("exp_raw",["friends","spotify_previews","tracks"]);trim=false,method="spectrum")
+#Spotifeatures.artist_genres_scatter("Pulse Clarity",datadir("exp_raw","friends");trim=false,method="spectrum")
