@@ -1,5 +1,5 @@
 module Spotifeatures
-using FileIO, DrWatson,XLSX,DataFrames,Heatmaps,Statistics,HypothesisTests,GLMakie,CSV
+using FileIO, DrWatson,XLSX,DataFrames,Heatmaps,Statistics,HypothesisTests,GLMakie,CSV,Printf
 include(srcdir("mirtool.jl"))
 include(srcdir("utils.jl"))
 include(srcdir("applefeatures.jl"))
@@ -93,7 +93,7 @@ function artist_genres_scatter(featname,foldername::Vector{String};trim=false,me
         friendsind = findfirst(last.(splitpath.(foldername)) .== "friends")
     end
     GLMakie.activate!()
-    rhycomplbl = "Rhythm Complexity"
+    rhycomplbl = "Rhythmic Complexity"
     f,ax,df = Mirtool.makescatter_mirfeature(featname,basename.(foldername);trim=trim,method=method)
     folnames = basename.(foldername)
     #dfs = DataFrame(XLSX.readtable(datadir("exp_raw","spotify_previews_spotify_features.xlsx"),"Sheet1",infer_eltypes=true))
@@ -127,6 +127,9 @@ function artist_genres_scatter(featname,foldername::Vector{String};trim=false,me
     rename!(j,:trackID => :fname)
 
     df = innerjoin(j,df[:,[featname,"fname"]],on=:fname)
+    fmeans = vec(mean(Matrix(df[:,[featname,"rhycomplexity"]]),dims=1))
+    f3stdup = fmeans .+ 3 .* vec(std(Matrix(df[:,[featname,"rhycomplexity"]]),dims=1)) # 3 stds above mean
+    f3stddown = fmeans .- 3 .* vec(std(Matrix(df[:,[featname,"rhycomplexity"]]),dims=1))# 3 stds below mean
     df.artist_genres = map(df.artist_genres) do x
         x = strip(x,['[',']'])
         x = replace.(x,"'"=>"")
@@ -147,6 +150,12 @@ function artist_genres_scatter(featname,foldername::Vector{String};trim=false,me
     y = c[:,rhycomplbl * "_mean"]
     resize!(f.scene, .8*2000, .8*1000)
     textlabel!(ax,x,y,c.artist_genres)
+    vlines!(ax,fmeans[1];linestyle=:dash)
+    vlines!(ax,[f3stdup[1], f3stddown[1]];linestyle=:dash, color=:red)
+    #textlabel!(ax,fmeans[1],0,["x̄ = " * @sprintf("%.2f",fmeans[1])])
+    hlines!(ax,fmeans[2];linestyle=:dash)
+    hlines!(ax,[f3stdup[2], f3stddown[2]];linestyle=:dash, color=:red)
+    #textlabel!(ax,0,fmeans[2],["x̄ = " * @sprintf("%.2f", fmeans[2])])
     scatter!(ax,x,y,markersize=(magnify * (sortedcounts)),color=1:N,colormap=(:coolwarm,.2),markerspace=:data)
     Mirtool.scatter_mirfeature_existing_figure(f, ax, df, featname,foldername;trim=trim,method=method)
     df = Mirtool.getjointdf(foldername;trim=trim,method=method)
