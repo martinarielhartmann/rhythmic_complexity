@@ -1,8 +1,29 @@
 module Mirtool
 using MATLAB,CSV,DataFrames,DrWatson,Heatmaps,Statistics,GLMakie
 include(srcdir("utils.jl"))
+function extract_MIR_features(foldername;trim=false,overwrite=false)
+    fname = basename(foldername) * "_" * "mirfeat" * "_trim_" * string(trim) * ".csv"
+    df_file = datadir("exp_pro", fname)
+    if isfile(df_file)
+        isfileflag = true
+    else
+        isfileflag = false
+    end
+    if isfileflag && overwrite==false
+        appendflag = true
+    else
+        appendflag = false
+    end
+    if appendflag
+        df = CSV.read(df_file, DataFrame)
+    else
+        cols = [featlbl(); emolbl();"fname"]
+        df = DataFrame(
+            [name => (name == "fname" ? String[] : Float64[])
+            for name in cols])
+        CSV.write(df_file,df)
+    end
 
-function extract_MIR_features(foldername;trim=false)
     fullfilenames = Utils.recursive_list_all_files_in_tree(foldername)
     filenames = basename.(fullfilenames)
 
@@ -16,28 +37,26 @@ function extract_MIR_features(foldername;trim=false)
     e = []
     i = 1
     for k = 1:N
-        display(filenames[k])
-        f = fullfilenames[k]
-        try
-            t,e = matlab_extract(f,trim)
-        catch # file must contain pure silence, so add some noise
-            mat"[au fs] = audioread($f)"
-            mat"au = au + randn(size(au))/100000"
-            mat"audiowrite($f,au,fs)"
-            t,e = matlab_extract(f,trim)
+        if !in(fullfilenames[k],df.fname)
+            display(filenames[k])
+            f = fullfilenames[k]
+            try
+                t,e = matlab_extract(f,trim)
+            catch # file must contain pure silence, so add some noise
+                mat"[au fs] = audioread($f)"
+                mat"au = au + randn(size(au))/100000"
+                mat"audiowrite($f,au,fs)"
+                t,e = matlab_extract(f,trim)
+            end
+            push!(vals,[t' e])
+            push!(names,fullfilenames[k])
+            featnames = [featlbl(); emolbl()]
+            df_write = [DataFrame(vcat(vals...), featnames) DataFrame(fname = vcat(names...))]
+            CSV.write(df_file, df_write,append=true)
+            i += 1
         end
-        push!(vals,[t' e])
-        push!(names,fullfilenames[k])
-        i += 1
     end
-    featnames = [featlbl(); emolbl()]
-    df_write = [DataFrame(vcat(vals...), featnames) DataFrame(fname = vcat(names...))]
-
-    fname = basename(foldername) * "_" * "mirfeat" * "_trim_" * string(trim) * ".csv"
-    df_file = datadir("exp_pro", fname)
-    CSV.write(df_file, df_write)
 end
-
 featlbl() = ["Pulse Clarity","Tempo", "Event Density", "RMS Energy", "Spectral Centroid", "Spectral Entropy", "Spectral Spread", "Spectral Roughness"]
 emolbl()=["Valence","Energy Arousal","Tension Arousal","Anger","Fear","Happiness","Sadness","Tenderness"];
 
