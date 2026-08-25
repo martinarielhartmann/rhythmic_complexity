@@ -61,7 +61,30 @@ function click_and_play(fig, ax, files; trim=false)
         return
     end
 end
-function play_audio(fname;trim=false)
+function play_audio(fname; trim=false)
+    f = FileIO.load(fname)
+    data = f.data
+    fs = f.samplerate
+
+    if trim
+        data = trimfirst5sec(data, fs)
+    else
+        data = trimfirstsec(data, fs, 30)
+    end
+
+    stream = PortAudioStream(0, 2; samplerate=fs)
+
+    @async begin
+        try
+            write(stream, data)
+        finally
+            close(stream)
+        end
+    end
+
+    return stream
+end
+function play_audio_(fname;trim=false)
     f = FileIO.load(fname)
     data = f.data
     fs = f.samplerate
