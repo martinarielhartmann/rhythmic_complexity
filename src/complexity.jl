@@ -1,5 +1,5 @@
 module Complexity
-using LinearAlgebra, Statistics,Makie,GLMakie,DSP,FFTW,PortAudio, DrWatson,MATLAB
+using LinearAlgebra, Statistics,Makie,GLMakie,DSP,FFTW,PortAudio, DrWatson,MATLAB,Printf
 include(srcdir("utils.jl"))
 # add https://github.com/JuliaAudio/MP3.jl
 struct Data
@@ -57,22 +57,64 @@ function main(foldername;trim=false,example=nothing,overwrite=false,method="spec
     end
 
 end
-function getcomplexity(fname;trim=trim)
+function getcomplexity(fname;trim=false,plot=false)
+    if plot
+        shortname = Utils.removextension(basename(fname))
+    end
     x = load(fname)
     sr = x.samplerate
     m = Utils.meanchannels(x)
+    if plot
+        fig = Figure()
+        l = length(vec(m))
+        t = range(0,l/sr,l)
+        ax = Axis(fig[1,1], ylabel="Amplitude (a.u.)",xlabel="Time (s)")
+        lines!(ax,t,vec(m))
+        save(plotsdir(shortname * "_audio" * ".png"),fig)
+    end
     if trim == true
         m = Utils.trimfirst5sec(m,sr)
     end
-    s,fs=getmelstft(m,sr)
+    s,t,fs=getmelstft(m,sr)
+    if plot
+        fig = Figure()
+        yticks = melticks(sr; n_mels=128, fmin=20.0)
+        ax = Axis(fig[1,1], xlabel="Time (s)",yticks=yticks,ylabel="Frequency")
+        heatmap!(ax,t,1:size(s,2),s)
+        save(plotsdir(shortname * "_mel_spec" * ".png"),fig)
+    end
     f = []
+        if plot
+            freqs = Vector{Float64}
+        end
     for k = 1:size(s,2)
         s₁ = s[:,k]
         s₁ .-= mean(s₁) # not a big impact. Important is not to divide by std; louder channels are more relevant
         pxx = periodogram(s₁;fs=fs)
-        push!(f,pxx.power[pxx.freq .>= 1 .&& pxx.freq .<= 3])
+        freqlims = [1,3]
+        push!(f,pxx.power[pxx.freq .>= freqlims[1] .&& pxx.freq .<= freqlims[2]])
+        if plot && k == 1
+            freqs = pxx.freq[pxx.freq .>= freqlims[1] .&& pxx.freq .<= freqlims[2]]
+        end
     end
-    c = complexity(vcat(f'...))
+    if plot
+        m = vcat(f'...)
+        fig = Figure()
+        yticks = melticks(sr; n_mels=128, fmin=20.0)
+        ax = Axis(fig[1,1], xlabel="Modulation frequency (Hz)",yticks=yticks,ylabel="Acoustic Frequency")
+        heatmap!(ax,freqs,1:size(s,2),m)
+        save(plotsdir(shortname * "_fluc" * ".png"),fig)
+
+        fig = Figure()
+        ax = Axis(fig[1,1], xlabel="Modulation frequency (Hz)",ylabel="Magnitude")
+        series!(ax,freqs,m,color=:viridis)
+        save(plotsdir(shortname * "_flucsummary" * ".png"),fig)
+    end
+    if plot
+        c = complexity(vcat(f'...),shortname,freqs)
+    else
+        c = complexity(vcat(f'...))
+    end
 end
 function getcomplexity_autocor(fname;trim=trim)
     x = load(fname)
@@ -81,7 +123,7 @@ function getcomplexity_autocor(fname;trim=trim)
     if trim == true
         m = Utils.trimfirst5sec(m,sr)
     end
-    s,fs=getmelstft(m,sr)
+    s,t,fs=getmelstft(m,sr)
     f = []
     for k = 1:size(s,2)
         s₁ = s[:,k]
@@ -170,7 +212,51 @@ function getmelstft(m, sr;
 
     fs = 1 / step(t)
 
-    return mel_db', fs
+    return mel_db', t, fs
+end
+function melticks(sr;
+    n_mels = 128,
+    fmin = 20.0,
+    fmax = sr / 2,
+    freqs = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000],
+)
+    # Hz <-> Mel
+    hz_to_mel(hz) = 2595.0 * log10(1.0 + hz / 700.0)
+    mel_to_hz(mel) = 700.0 * (10.0^(mel / 2595.0) - 1.0)
+
+    # Same Mel points used in getmelstft
+    mel_points = mel_to_hz.(
+        range(
+            hz_to_mel(fmin),
+            hz_to_mel(fmax),
+            length = n_mels + 2
+        )
+    )
+
+    # Center frequency of each Mel filter
+    mel_centers = mel_points[2:end-1]
+
+    # Only use requested frequencies within range
+    freqs = filter(f -> fmin <= f <= fmax, freqs)
+
+    # Map each frequency to its nearest Mel-bin index
+    tick_positions = [
+        argmin(abs.(mel_centers .- f))
+        for f in freqs
+    ]
+
+    # Remove duplicate positions, which can happen with few Mel bins
+    unique_ticks = unique(zip(tick_positions, freqs))
+
+    positions = first.(unique_ticks)
+    labels = [
+        f >= 1000 ?
+            "$(round(f / 1000; digits=1)) kHz" :
+            "$(round(Int, f)) Hz"
+        for f in last.(unique_ticks)
+    ]
+
+    return (positions, labels)
 end
 function complexity(x)
     ndim = size(x,2)
@@ -180,5 +266,24 @@ function complexity(x)
     p = max.(p,eps())
     H = -sum(p.*log.(p))
     c = exp(H) / ndim # relative to number of channels (which depends on duration)
+end
+function complexity(x,shortname,freqs)
+    ndim = size(x,2)
+    x .-= mean(x,dims=1)
+    M = x'*x
+    fig = Figure(size=(800, 800),aspect = 1)
+    freqnames = string.(round.(freqs,digits=2))
+    ax = Axis(fig[1,1], xlabel="Modulation frequency (Hz)",ylabel="Modulation frequency (Hz)",xticks=(1:length(freqs),freqnames),yticks=(1:length(freqs),freqnames),xticklabelrotation = π / 2)
+    heatmap!(ax,M)
+    save(plotsdir(shortname * "_covmat" * ".png"),fig)
+    λ = eigvals(M)
+    p = λ/sum(λ)
+    p = max.(p,eps())
+    H = -sum(p.*log.(p))
+    c = exp(H) / ndim # relative to number of channels (which depends on duration)
+    fig = Figure()
+    ax = Axis(fig[1,1], xlabel="Eigenvalue index",ylabel="Normalized eigenvalue",title="complexity = " * string(round(c,digits=3)))
+    scatterlines!(ax,sort(p,rev=true))
+    save(plotsdir(shortname * "_eig" * ".png"),fig)
 end
 end

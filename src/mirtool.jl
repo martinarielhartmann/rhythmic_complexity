@@ -1,7 +1,34 @@
 module Mirtool
 using MATLAB,CSV,DataFrames,DrWatson,Heatmaps,Statistics,GLMakie
 include(srcdir("utils.jl"))
-function extract_MIR_features(foldername;trim=false,overwrite=false)
+function extract_MIR_features(foldername;trim=false)
+    name = basename(foldername) * "_" * "mirfeat" * "_trim_" * string(trim)
+    path = datadir("exp_pro", name)
+    fullfilenames = Utils.recursive_list_all_files_in_tree(foldername)
+    filenames = basename.(fullfilenames)
+    mat"addpath(genpath('~/Documents/MATLAB/mirtoolbox'))"
+    mat"mirverbose(0)"
+    mat"addpath(genpath('/Users/maarhart/Downloads/miremotionPT'))"
+    c = Dict("audiofname" => fullfilenames, "trim" => trim);
+    config = dict_list(c)
+    map(x -> produce_or_load(extractmatlab,x,path),config)
+end
+function extractmatlab(config)
+    t = []
+    e = []
+    f = config["audiofname"]
+    trim = config["trim"]
+    try
+        t,e = matlab_extract(f,trim)
+    catch # file must contain pure silence, so add some noise
+        mat"[au fs] = audioread($f)"
+        mat"au = au + randn(size(au))/100000"
+        mat"audiowrite($f,au,fs)"
+        t,e = matlab_extract(f,trim)
+    end
+    res = Dict("audiofname" => f, "vals" => Float64.([t' e]))
+end
+function extract_MIR_features_old(foldername;trim=false,overwrite=false)
     fname = basename(foldername) * "_" * "mirfeat" * "_trim_" * string(trim) * ".csv"
     df_file = datadir("exp_pro", fname)
     if isfile(df_file)

@@ -27,7 +27,7 @@ Path of active project: $(projectdir())
 
 #Complexity.main(datadir("exp_raw","trol");trim=true,method="spectrum")
 #Complexity.main(datadir("exp_raw","trol");trim=false,method="spectrum")
-#Mirtool.extract_MIR_features(datadir("exp_raw","trol");trim=true)
+Mirtool.extract_MIR_features(datadir("exp_raw","trol");trim=true)
 
 #Complexity.main(datadir("exp_raw","friends");trim=true,method="spectrum")
 #Mirtool.extract_MIR_features(datadir("exp_raw","friends");trim=false)
@@ -61,3 +61,10 @@ Path of active project: $(projectdir())
 
 #Spotifeatures.artist_genres_scatter("Pulse Clarity",datadir("exp_raw","friends");trim=false,method="spectrum")
 #Spotifeatures.artist_genres_scatter("Pulse Clarity",datadir.("exp_raw",["friends","spotify_previews","tracks"]);trim=false,method="spectrum")
+
+#Complexity.getcomplexity(datadir("exp_raw","polyrhythms","2_2_bpm_KS.wav");plot=true,trim=true)
+#Complexity.getcomplexity(datadir("exp_raw","polyrhythms","irregular_bpm_KS.wav");plot=true,trim=true)
+
+#Complexity.getcomplexity(papersdir("slides","src","dancing_queen.mp3");plot=true,trim=false)
+#Complexity.getcomplexity(papersdir("slides","src","sad_sorrowful_love.mp3");plot=true,trim=false)
+#Complexity.getcomplexity(papersdir("slides","src","you_are_the_music.mp3");plot=true,trim=false)
