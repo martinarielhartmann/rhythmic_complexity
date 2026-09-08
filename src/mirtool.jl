@@ -1,23 +1,31 @@
 module Mirtool
 using MATLAB,CSV,DataFrames,DrWatson,Heatmaps,Statistics,GLMakie
 include(srcdir("utils.jl"))
-function extract_MIR_features(foldername;trim=false)
+function getaudiofilenames(foldername,trim)
     name = basename(foldername) * "_" * "mirfeat" * "_trim_" * string(trim)
     path = datadir("exp_pro", name)
     fullfilenames = Utils.recursive_list_all_files_in_tree(foldername)
     filenames = basename.(fullfilenames)
+    return fullfilenames, filenames,path
+end
+function extract_MIR_features(foldername;trim=false)
+    fullfilenames, filenames, path = getaudiofilenames(foldername,trim)
     mat"addpath(genpath('~/Documents/MATLAB/mirtoolbox'))"
     mat"mirverbose(0)"
     mat"addpath(genpath('/Users/maarhart/Downloads/miremotionPT'))"
-    c = Dict("audiofname" => fullfilenames, "trim" => trim);
+    c = Dict("dataset" => last(split(foldername,"/")),"fname" => fullfilenames, "trim" => trim);
     config = dict_list(c)
-    map(x -> produce_or_load(extractmatlab,x,path),config)
+    for k in eachindex(config)
+        produce_or_load(extractmatlab,config[k],path,filename=filenames[k])
+    end
 end
 function extractmatlab(config)
     t = []
     e = []
-    f = config["audiofname"]
+    f = config["fname"]
     trim = config["trim"]
+    dataset = config["dataset"]
+    #f = projectdir("data","exp_raw",dataset,fname)
     try
         t,e = matlab_extract(f,trim)
     catch # file must contain pure silence, so add some noise
@@ -26,7 +34,9 @@ function extractmatlab(config)
         mat"audiowrite($f,au,fs)"
         t,e = matlab_extract(f,trim)
     end
-    res = Dict("audiofname" => f, "vals" => Float64.([t' e]))
+    ks = [featlbl(); emolbl();"fname"]
+    vs = [t' e f]
+    res = Dict(zip(ks,vs))
 end
 function extract_MIR_features_old(foldername;trim=false,overwrite=false)
     fname = basename(foldername) * "_" * "mirfeat" * "_trim_" * string(trim) * ".csv"
@@ -92,14 +102,20 @@ function compare_with_mirtool(foldername;trim=false,method="spectrum")
     fname = basename(foldername) * "_" * "mirfeat" * "_trim_" * string(trim) * ".csv"
     fname2 = basename(foldername) * "_trim_" * string(trim) * "_method_" * method * ".jld2"
     mirtool_file = datadir("exp_pro", fname)
-    mirdf = CSV.read(mirtool_file,DataFrame)
+    if isfile(mirtool_file)
+        mirdf = CSV.read(mirtool_file,DataFrame)
+    else
+        fname3 = datadir("exp_pro",basename(foldername) * "_mirfeat" * "_trim_" * string(trim))
+        mirdf = collect_results(fname3)
+    end
     rhy_file = datadir("exp_pro", fname2)
     rhy = load(rhy_file)["data"]
     rval = rhy.val
+
     if basename.(rhy.fname) != basename.(mirdf.fname)
         error("filename mismatch")
     end
-    if eltype(mirdf.Valence) !== Float64
+    if eltype(mirdf.Valence) !== Union{Missing,Float64}
         badcases = occursin.(" + ",mirdf.Valence) # remove examples that yielded complex values (and that's why we see strings)
         rval = rval[.!badcases]
         mirdf = mirdf[.!badcases,:]
@@ -108,8 +124,9 @@ function compare_with_mirtool(foldername;trim=false,method="spectrum")
             mirdf[!,emlb[k]] = parse.(Float64,mirdf[:,emlb[k]])
         end
     end
-    df = [DataFrame("Rhythmic Complexity"=>rval) mirdf]
-    dfval = df[:,1:end-1]
+    rhycomp = "Rhythmic Complexity"
+    df = [DataFrame(rhycomp=>rval) mirdf]
+    dfval = df[:,[featlbl();rhycomp]]
     m = Matrix(dfval)
     m = m[vec(.!any(isnan.(m),dims=2)),:] # remove any examples with NaNs
     dfc = DataFrame(cor(m),names(dfval))
@@ -187,7 +204,7 @@ function scatter_mirfeature(df, featname)
 
     legend_elements = [MarkerElement(marker=:circle,color=colors[i],markersize=10) for i in eachindex(groups) ]
 
-legend = Legend(f[1, 1],legend_elements, string.(groups), "Group", tellwidth=false, tellheight=false, halign=:right, valign=:top)
+    legend = Legend(f[1, 1],legend_elements, string.(groups), "Group", tellwidth=false, tellheight=false, halign=:right, valign=:top)
     return f, ax
 end
 function matlab_extract(f,trim)

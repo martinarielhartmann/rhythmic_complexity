@@ -27,7 +27,11 @@ Path of active project: $(projectdir())
 
 #Complexity.main(datadir("exp_raw","trol");trim=true,method="spectrum")
 #Complexity.main(datadir("exp_raw","trol");trim=false,method="spectrum")
-Mirtool.extract_MIR_features(datadir("exp_raw","trol");trim=true)
+#Mirtool.extract_MIR_features(datadir("exp_raw","trol");trim=true)
+
+#Complexity.main(datadir("exp_raw","toy_spotify_previews");trim=true)
+#Mirtool.extract_MIR_features(datadir("exp_raw","toy_spotify_previews");trim=true)
+#Mirtool.scatter_mirfeature("Pulse Clarity",datadir("exp_raw","toy_spotify_previews");trim=true)
 
 #Complexity.main(datadir("exp_raw","friends");trim=true,method="spectrum")
 #Mirtool.extract_MIR_features(datadir("exp_raw","friends");trim=false)
