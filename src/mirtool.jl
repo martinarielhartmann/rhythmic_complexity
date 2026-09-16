@@ -115,7 +115,7 @@ function compare_with_mirtool(foldername;trim=false,method="spectrum")
     if basename.(rhy.fname) != basename.(mirdf.fname)
         error("filename mismatch")
     end
-    if eltype(mirdf.Valence) !== Union{Missing,Float64}
+    if (eltype(mirdf.Valence) !== Union{Missing,Float64}) && (eltype(mirdf.Valence) !== Float64)
         badcases = occursin.(" + ",mirdf.Valence) # remove examples that yielded complex values (and that's why we see strings)
         rval = rval[.!badcases]
         mirdf = mirdf[.!badcases,:]
