@@ -159,10 +159,12 @@ function artist_genres_scatter(featname,foldername::Vector{String};trim=false,me
     scatter!(ax,x,y,markersize=(magnify * (sortedcounts)),color=1:N,colormap=(:coolwarm,.2),markerspace=:data)
     Mirtool.scatter_mirfeature_existing_figure(f, ax, df, featname,foldername;trim=trim,method=method)
     df = Mirtool.getjointdf(foldername;trim=trim,method=method)
-    Utils.click_and_play(f,ax,df.fname;trim=trim)
+    fnames = datadir() .* "/" .* map(x->join(split(x,"/")[end-2:end],"/"),df.fname)
+
+    Utils.click_and_play(f,ax,fnames;trim=trim)
     xlims!(ax, 0, 1)
     ylims!(ax, 0, .5)
-    @show c
+    #@show c
     display(f)
 end
 function get_rhycomp(foldername,trim,method)
