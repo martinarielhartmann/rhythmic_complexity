@@ -64,7 +64,7 @@ Path of active project: $(projectdir())
 #Mirtool.scatter_multidataset("Pulse Clarity",["spotify_previews","friends","tracks"];trim=true,method="spectrum")
 
 #Spotifeatures.artist_genres_scatter("Pulse Clarity",datadir("exp_raw","friends");trim=false,method="spectrum")
-#Spotifeatures.artist_genres_scatter("Pulse Clarity",datadir.("exp_raw",["friends","spotify_previews","tracks"]);trim=false,method="spectrum")
+Spotifeatures.artist_genres_scatter("Pulse Clarity",datadir.("exp_raw",["friends","spotify_previews","tracks"]);trim=false,method="spectrum")
 
 #Complexity.getcomplexity(datadir("exp_raw","polyrhythms","2_2_bpm_KS.wav");plot=true,trim=true)
 #Complexity.getcomplexity(datadir("exp_raw","polyrhythms","irregular_bpm_KS.wav");plot=true,trim=true)
