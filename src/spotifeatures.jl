@@ -1,7 +1,7 @@
 module Spotifeatures
 using FileIO, DrWatson,XLSX,DataFrames,Heatmaps,Statistics,HypothesisTests,GLMakie,CSV,Printf
 include(srcdir("mirtool.jl"))
-include(srcdir("utils.jl"))
+include(srcdir("Utils.jl"))
 include(srcdir("applefeatures.jl"))
 function artist_genres_boxplots(foldername;trim=false,method="spectrum")
     dfs = DataFrame(XLSX.readtable(datadir("exp_raw","Spotify_features.xlsx"),"Sheet1",infer_eltypes=true))

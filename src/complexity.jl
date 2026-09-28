@@ -1,6 +1,6 @@
 module Complexity
 using LinearAlgebra, Statistics,Makie,GLMakie,DSP,FFTW,PortAudio, DrWatson,MATLAB,Printf
-include(srcdir("utils.jl"))
+include(srcdir("Utils.jl"))
 # add https://github.com/JuliaAudio/MP3.jl
 struct Data
     fname

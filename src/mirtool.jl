@@ -1,10 +1,12 @@
 module Mirtool
 using MATLAB,CSV,DataFrames,DrWatson,Heatmaps,Statistics,GLMakie
-include(srcdir("utils.jl"))
+include(srcdir("Utils.jl"))
+using .Utils:recursive_list_all_files_in_tree,cor_pvalues
+
 function getaudiofilenames(foldername,trim)
     name = basename(foldername) * "_" * "mirfeat" * "_trim_" * string(trim)
     path = datadir("exp_pro", name)
-    fullfilenames = Utils.recursive_list_all_files_in_tree(foldername)
+    fullfilenames = recursive_list_all_files_in_tree(foldername)
     filenames = basename.(fullfilenames)
     return fullfilenames, filenames,path
 end
@@ -61,7 +63,7 @@ function extract_MIR_features_old(foldername;trim=false,overwrite=false)
         CSV.write(df_file,df)
     end
 
-    fullfilenames = Utils.recursive_list_all_files_in_tree(foldername)
+    fullfilenames = recursive_list_all_files_in_tree(foldername)
     filenames = basename.(fullfilenames)
 
     mat"addpath(genpath('~/Documents/MATLAB/mirtoolbox'))"
@@ -111,7 +113,8 @@ function compare_with_mirtool(foldername;trim=false,method="spectrum")
     rhy_file = datadir("exp_pro", fname2)
     rhy = load(rhy_file)["data"]
     rval = rhy.val
-
+    #@infiltrate
+    in.(basename.(mirdf.fname),Ref(basename.(rhy.fname)))
     if basename.(rhy.fname) != basename.(mirdf.fname)
         error("filename mismatch")
     end
@@ -132,7 +135,7 @@ function compare_with_mirtool(foldername;trim=false,method="spectrum")
     dfc = DataFrame(cor(m),names(dfval))
     #display(DataFrame(cor_pvalues(m),names(dfval)))
     #display(scatter(m[:,1],m[:,3]))
-    f = Heatmaps.heatmap(dfc,Utils.cor_pvalues(m))
+    f = Heatmaps.heatmap(dfc,cor_pvalues(m))
     fn = "mirfeat_corrs_" * basename(foldername) * "_trim_" * string(trim) * "_method_" * method * ".png"
     save(plotsdir(fn),f)
     fn = "rhycomp_and_mirfeats_" * basename(foldername) * "_trim_" * string(trim) * "_method_" * method * ".csv"
