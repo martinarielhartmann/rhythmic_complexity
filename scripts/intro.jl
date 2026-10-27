@@ -13,13 +13,25 @@ Currently active project is: $(projectname())
 Path of active project: $(projectdir())
 """
 )
+
+Complexity.main(datadir("exp_raw","spotify_previews");trim=true,method="spectrum",overwrite=true)
+Mirtool.extract_MIR_features(datadir("exp_raw","spotify_previews");trim=true)
+#=
 Complexity.main(datadir("exp_raw","friends");trim=true,method="spectrum",overwrite=true)
 Complexity.main(datadir("exp_raw","spotify_previews");trim=true,method="spectrum",overwrite=true)
 Complexity.main(datadir("exp_raw","endurance_cycling");trim=true,method="spectrum",overwrite=true)
 
+
 Mirtool.extract_MIR_features(datadir("exp_raw","friends");trim=true)
 Mirtool.extract_MIR_features(datadir("exp_raw","spotify_previews");trim=true)
 Mirtool.extract_MIR_features(datadir("exp_raw","endurance_cycling");trim=true)
+=#
+
+#Spotifeatures.sample_across_folders("Pulse Clarity",datadir.("exp_raw",["friends","endurance_cycling"]);trim=true,method="spectrum")
+
+#Spotifeatures.sample_across_folders("Pulse Clarity",datadir.("exp_raw",["friends","spotify_previews","tracks"]);trim=true,method="spectrum")
+
+#Spotifeatures.artist_genres_scatter("Pulse Clarity",datadir.("exp_raw",["friends","spotify_previews","endurance_cycling"]);trim=true)
 
 
 # Complexity.main(datadir("exp_raw","polyedc"))

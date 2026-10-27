@@ -113,7 +113,6 @@ function compare_with_mirtool(foldername;trim=false,method="spectrum")
     rhy_file = datadir("exp_pro", fname2)
     rhy = load(rhy_file)["data"]
     rval = rhy.val
-    #@infiltrate
     in.(basename.(mirdf.fname),Ref(basename.(rhy.fname)))
     if basename.(rhy.fname) != basename.(mirdf.fname)
         error("filename mismatch")
@@ -212,7 +211,7 @@ function scatter_mirfeature(df, featname)
 end
 function matlab_extract(f,trim)
     if trim
-        mat"a = miraudio($f,'Extract','Middle',-5,5)"
+        mat"a = miraudio($f,'Extract',-5,5,'Middle')"
     else
         mat"a = miraudio($f)"
     end
