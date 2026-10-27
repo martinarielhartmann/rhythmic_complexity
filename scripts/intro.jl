@@ -13,6 +13,15 @@ Currently active project is: $(projectname())
 Path of active project: $(projectdir())
 """
 )
+Complexity.main(datadir("exp_raw","friends");trim=true,method="spectrum",overwrite=true)
+Complexity.main(datadir("exp_raw","spotify_previews");trim=true,method="spectrum",overwrite=true)
+Complexity.main(datadir("exp_raw","endurance_cycling");trim=true,method="spectrum",overwrite=true)
+
+Mirtool.extract_MIR_features(datadir("exp_raw","friends");trim=true)
+Mirtool.extract_MIR_features(datadir("exp_raw","spotify_previews");trim=true)
+Mirtool.extract_MIR_features(datadir("exp_raw","endurance_cycling");trim=true)
+
+
 # Complexity.main(datadir("exp_raw","polyedc"))
 # Complexity.main(datadir("exp_raw","polybpm"))
 # Complexity.main(datadir("exp_raw","toytracks");trim=true)
@@ -23,7 +32,6 @@ Path of active project: $(projectdir())
 # Complexity.main(datadir("exp_raw","classif");overwrite=true)
 #Complexity.main(datadir("exp_raw","polyrhythms");example="irregular_bpm_KS.wav")
 #Mirtool.extract_MIR_features(datadir("exp_raw","polyrhythms"),overwrite=false)
-#Complexity.main(datadir("exp_raw","friends");trim=false,method="spectrum",overwrite=true)
 
 #Complexity.main(datadir("exp_raw","trol");trim=true,method="spectrum")
 #Complexity.main(datadir("exp_raw","trol");trim=false,method="spectrum")
@@ -67,7 +75,7 @@ Path of active project: $(projectdir())
 #Spotifeatures.artist_genres_scatter("Pulse Clarity",datadir("exp_raw","friends");trim=false,method="spectrum")
 #Spotifeatures.artist_genres_scatter("Pulse Clarity",datadir.("exp_raw",["friends","spotify_previews","tracks"]);trim=false,method="spectrum")
 
-Spotifeatures.sample_across_folders("Pulse Clarity",datadir.("exp_raw",["friends","spotify_previews","tracks"]);trim=false,method="spectrum")
+#Spotifeatures.sample_across_folders("Pulse Clarity",datadir.("exp_raw",["friends","spotify_previews","tracks"]);trim=false,method="spectrum")
 
 
 #Complexity.getcomplexity(datadir("exp_raw","polyrhythms","2_2_bpm_KS.wav");plot=true,trim=true)

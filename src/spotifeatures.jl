@@ -229,7 +229,7 @@ function artist_genres_scatter(featname,foldername::Vector{String};trim=false,me
     display(f)
 end
 function get_rhycomp(foldername,trim,method)
-    # works for spotify_previews; with tracks one needs to tweak because the filenames are not the spotify trackID
+    # works for spotify_previews; with endurance_cycling one needs to tweak because the filenames are not the spotify trackID
     fn = datadir("exp_pro", split(foldername, "/")[end] * "_trim_" * string(trim) * "_method_" * method * ".jld2")
     d = load(fn)
     g = d["data"].val

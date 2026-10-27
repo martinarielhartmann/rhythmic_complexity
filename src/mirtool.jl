@@ -151,7 +151,7 @@ end
 function getjointdf(foldernames;trim=false,method="spectrum")
     compare_with_mirtool.(foldernames;trim=trim,method=method)
     fn = map(x -> "rhycomp_and_mirfeats_" * basename(x) * "_trim_" * string(trim) * "_method_" * method * ".csv", foldernames)
-    replace!(foldernames,"friends" => "Friends and Strangers","tracks" => "Endurance Cycling", "spotify_previews" => "Personally Meaningful Music")
+    replace!(foldernames,"friends" => "Friends and Strangers","endurance_cycling" => "Endurance Cycling", "spotify_previews" => "Personally Meaningful Music")
     m = map(x -> CSV.read(datadir("exp_pro", x),DataFrame),fn)
     groups = map((x,y) -> fill(x,size(y,1)),foldernames,m)
     for k = 1:length(groups)
@@ -175,7 +175,7 @@ function makescatter_mirfeature(featname,foldername::String;trim=false,method="s
     fn = "rhycomp_and_mirfeats_" * basename(foldername) * "_trim_" * string(trim) * "_method_" * method * ".csv"
     df = CSV.read(datadir("exp_pro", fn),DataFrame)
     fname = basename(foldername)
-    fname = replace(fname,"friends" => "Friends and Strangers","tracks" => "Endurance Cycling", "spotify_previews" => "Personally Meaningful Music")
+    fname = replace(fname,"friends" => "Friends and Strangers","endurance_cycling" => "Endurance Cycling", "spotify_previews" => "Personally Meaningful Music")
     df.Group = fill(fname,size(df,1))
     f, ax = scatter_mirfeature(df,featname)
     return f,ax,df

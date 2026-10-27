@@ -67,9 +67,9 @@ function play_audio(fname; trim=false)
     fs = f.samplerate
 
     if trim
-        data = trimfirst5sec(data, fs)
+        data = trimfirstnsec(data, fs, 10)
     else
-        data = trimfirstsec(data, fs, 30)
+        data = trimfirstnsec(data, fs, 30)
     end
 
     stream = PortAudioStream(0, 2; samplerate=fs)
@@ -89,9 +89,9 @@ function play_audio_(fname;trim=false)
     data = f.data
     fs = f.samplerate
     if trim
-        data = trimfirst5sec(data,fs)
+        data = trimfirstnsec(data,fs,10)
     else
-        data = trimfirstsec(data,fs,30)
+        data = trimfirstnsec(data,fs,30)
     end
     stream = PortAudioStream(0, 2; samplerate=fs)
 
@@ -120,7 +120,6 @@ function cor_pvalues(X)
     end
     return P
 end
-trimfirstsec(x, sr,sec) = x[1:min(length(x), sec*Int(sr))]
-trimfirst5sec(x, sr) = x[1:min(length(x), 5Int(sr))]
+trimfirstnsec(x, sr,sec) = x[1:min(length(x), sec*Int(sr))]
 meanchannels(x) = collect(vec(mean(Float64.(x),dims=2)))
 end
