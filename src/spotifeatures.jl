@@ -1,5 +1,5 @@
 module Spotifeatures
-using FileIO, DrWatson,XLSX,DataFrames,Heatmaps,Statistics,HypothesisTests,GLMakie,CSV,Printf
+using FileIO, DrWatson,XLSX,DataFrames,Heatmaps,Statistics,HypothesisTests,GLMakie,CSV,Printf,StatsBase
 include(srcdir("mirtool.jl"))
 include(srcdir("Utils.jl"))
 include(srcdir("applefeatures.jl"))
@@ -86,6 +86,67 @@ function get_df_spotify(foldername)
         dfs.trackID = Utils.removextension.(dfs.trackID)
     end
     return dfs
+end
+function sample_across_folders(featname,foldername::Vector{String};trim=false,method="spectrum")
+    friendsflag = any(last.(splitpath.(foldername)) .== "friends")
+    if friendsflag
+        friendsind = findfirst(last.(splitpath.(foldername)) .== "friends")
+    end
+    GLMakie.activate!()
+    rhycomplbl = "Rhythmic Complexity"
+    f,ax,df = Mirtool.makescatter_mirfeature(featname,basename.(foldername);trim=trim,method=method)
+    folnames = basename.(foldername)
+    #dfs = DataFrame(XLSX.readtable(datadir("exp_raw","spotify_previews_spotify_features.xlsx"),"Sheet1",infer_eltypes=true))
+    dfs = Vector{DataFrame}(undef,length(folnames))
+for k in eachindex(folnames)
+        if folnames[k] == "friends"
+            dfs[k] = Applefeatures.get_df_apple(folnames[k])
+            dfs[k].artist_genres = lowercase.(coalesce.(dfs[k].artist_genres, ""))
+            dfs[k].artist_genres = ["['$(x)']" for x in dfs[k].artist_genres]
+        else
+            dfs[k] = get_df_spotify(folnames[k])
+        end
+    end
+    dfr = Vector{DataFrames.DataFrame}(undef,length(foldername))
+    for k = 1:length(foldername)
+        dfr[k],_ = get_rhycomp(foldername[k],trim,method)
+    end
+    if friendsflag
+        dfr[friendsind].trackID = map(x->x[4:end],dfr[friendsind].trackID)
+    end
+    j = innerjoin(vcat(dfs...),vcat(dfr...),on=:trackID)
+    df.fname = Utils.removextension.(basename.(df.fname))
+    if friendsflag
+        for k in eachindex(df.fname)
+            sv = df.fname[k][nextind(df.fname[k], 0, 4):end]
+            if in(sv, dfr[friendsind].trackID)
+                df.fname[k] = sv
+            end
+        end
+    end
+    rename!(j,:trackID => :fname)
+    df = innerjoin(j,df[:,[featname,"fname"]],on=:fname)
+    function bin_by_percentiles(x,qs)
+        q = quantile(x, qs)
+        [1 + count(c -> xi > c, q) for xi in x]
+    end
+    qs = [0.05, 0.25, 0.75, 0.95]
+    df.binc = bin_by_percentiles(df.rhycomplexity,qs)
+    df.binpc = bin_by_percentiles(df[:,"Pulse Clarity"],qs)
+    name = String[]
+    complexity_pctl, pclarity_pctl = Float64[],Float64[]
+    qsall = [0.05, 0.25, 0.75, 0.95,1]
+    for k = 1:5, j =1:5
+        n = findfirst(df.binc .== k .&& df.binpc .== j)
+        if !isnothing(n)
+            push!(name,df.fname[n])
+            push!(complexity_pctl,qsall[k])
+            push!(pclarity_pctl,qsall[j])
+        else
+            #push!(name,sample(df.fname,1)[1])
+        end
+    end
+    @show DataFrame(;name,complexity_pctl,pclarity_pctl)
 end
 function artist_genres_scatter(featname,foldername::Vector{String};trim=false,method="spectrum")
     friendsflag = any(last.(splitpath.(foldername)) .== "friends")
