@@ -67,7 +67,7 @@ function play_audio(fname; trim=false)
     fs = f.samplerate
 
     if trim
-        data = trimfirstnsec(data, fs, 10)
+        data = trimmiddlensec(data, fs, 10)
     else
         data = trimfirstnsec(data, fs, 30)
     end
@@ -89,7 +89,7 @@ function play_audio_(fname;trim=false)
     data = f.data
     fs = f.samplerate
     if trim
-        data = trimfirstnsec(data,fs,10)
+        data = trimmiddlensec(data,fs,10)
     else
         data = trimfirstnsec(data,fs,30)
     end
@@ -120,6 +120,7 @@ function cor_pvalues(X)
     end
     return P
 end
+trimmiddlensec(x, sr, sec) = x[max(1, div(length(x) - sec*Int(sr), 2) + 1):min(length(x), div(length(x) + sec*Int(sr), 2))]
 trimfirstnsec(x, sr,sec) = x[1:min(length(x), sec*Int(sr))]
 meanchannels(x) = collect(vec(mean(Float64.(x),dims=2)))
 end

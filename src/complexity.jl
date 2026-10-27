@@ -73,7 +73,7 @@ function getcomplexity(fname;trim=false,plot=false)
         save(plotsdir(shortname * "_audio" * ".png"),fig)
     end
     if trim == true
-        m = Utils.trimfirstnsec(m,sr,10)
+        m = Utils.trimmiddlensec(m,sr,10)
     end
     s,t,fs=getmelstft(m,sr)
     if plot
@@ -121,7 +121,7 @@ function getcomplexity_autocor(fname;trim=trim)
     sr = x.samplerate
     m = Utils.meanchannels(x)
     if trim == true
-        m = Utils.trimfirstnsec(m,sr,10)
+        m = Utils.trimmiddlensec(m,sr,10)
     end
     s,t,fs=getmelstft(m,sr)
     f = []

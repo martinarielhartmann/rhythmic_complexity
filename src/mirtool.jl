@@ -212,7 +212,7 @@ function scatter_mirfeature(df, featname)
 end
 function matlab_extract(f,trim)
     if trim
-        mat"a = miraudio($f,'Extract',0,5)"
+        mat"a = miraudio($f,'Extract','Middle',-5,5)"
     else
         mat"a = miraudio($f)"
     end
