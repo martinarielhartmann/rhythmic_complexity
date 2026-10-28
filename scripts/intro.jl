@@ -14,8 +14,8 @@ Path of active project: $(projectdir())
 """
 )
 
-Complexity.main(datadir("exp_raw","spotify_previews");trim=true,method="spectrum",overwrite=true)
-Mirtool.extract_MIR_features(datadir("exp_raw","spotify_previews");trim=true)
+Complexity.main(datadir("exp_raw","the_rhythm_of_life");trim=true,method="spectrum",overwrite=true)
+Mirtool.extract_MIR_features(datadir("exp_raw","the_rhythm_of_life");trim=true)
 #=
 Complexity.main(datadir("exp_raw","friends");trim=true,method="spectrum",overwrite=true)
 Complexity.main(datadir("exp_raw","spotify_previews");trim=true,method="spectrum",overwrite=true)
